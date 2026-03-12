@@ -1,52 +1,34 @@
 import frappe
 
 @frappe.whitelist()
-def get_unbilled_lcv_charges(supplier):
-    """
-    Return LCV Applicable Charges rows for this supplier
-    that are from submitted LCV and not yet billed in any Purchase Invoice.
-    """
+def get_lcv_charges_by_supplier(supplier):
 
     if not supplier:
         return []
 
-    rows = frappe.db.sql("""
+    data = frappe.db.sql("""
         SELECT
-            ac.name AS child_row,
-            ac.parent AS lcv,
-            ac.custom_item AS item_code,
-            ac.amount AS rate,
+            ac.custom_item,
+            ac.amount,
             ac.exchange_rate
         FROM
-            `tabLanded Cost Taxes and Charges` ac
-        INNER JOIN
             `tabLanded Cost Voucher` lcv
-            ON lcv.name = ac.parent
+        JOIN
+            `tabLanded Cost Taxes and Charges` ac
+            ON ac.parent = lcv.name
         WHERE
             lcv.docstatus = 1
             AND ac.custom_supplier = %s
-            AND IFNULL(ac.purchase_invoice, '') = ''
-        ORDER BY lcv.posting_date
-    """, (supplier,), as_dict=True)
+    """, (supplier), as_dict=True)
 
-    return rows
+    items = []
 
+    for d in data:
+        items.append({
+            "item_code": d.custom_item,
+            "qty": 1,
+            "rate": d.amount,
+            "exchange_rate": d.exchange_rate
+        })
 
-@frappe.whitelist()
-def mark_lcv_rows_billed(rows, purchase_invoice):
-    """
-    After PI is saved/submitted, mark LCV child rows as billed
-    to prevent duplicate billing.
-    """
-    if isinstance(rows, str):
-        rows = frappe.parse_json(rows)
-
-    for r in rows:
-        frappe.db.set_value(
-            "Landed Cost Taxes and Charges",
-            r.get("child_row"),
-            "purchase_invoice",
-            purchase_invoice
-        )
-
-    frappe.db.commit()
+    return items
