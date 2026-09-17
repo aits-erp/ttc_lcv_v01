@@ -10,9 +10,6 @@ doctype_js = {
     "Purchase Invoice": "public/js/purchase_invoice.js"
 }
 
-override_doctype_class = {
-    "Leave Application": "landed_cost_customization.overrides.leave_application.CustomLeaveApplication"
-}
 
 # Apps
 # ------------------
